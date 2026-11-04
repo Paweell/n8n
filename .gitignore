@@ -7,3 +7,8 @@ Thumbs.db
 .env
 *.local
 credentials.json
+
+# Internal helper scripts & guides
+sync.sh
+INSTRUKCJA_SYNC.md
+README_GITHUB_PROPOZYCJE.md
