@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Prosty skrypt do szybkiej aktualizacji repozytorium n8n na GitHubie
+# Skrypt synchronizacji repozytorium n8n z GitHubem
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR" || exit 1
@@ -9,33 +9,35 @@ echo "=========================================="
 echo "🚀 Aktualizacja repozytorium n8n -> GitHub"
 echo "=========================================="
 
-# Sprawdzenie zmian
-if [ -z "$(git status --porcelain)" ]; then
-    echo "ℹ️ Brak nowych zmian do wysłania."
-    exit 0
-fi
+# 1. Sprawdzenie czy są lokalne zmiany do zatwierdzenia (uncommitted)
+HAS_CHANGES=$(git status --porcelain)
 
-git status -s
+if [ -n "$HAS_CHANGES" ]; then
+    echo "📋 Wykryto nowe/zmodyfikowane pliki:"
+    git status -s
 
-# Pobranie opisu commita
-if [ -z "$1" ]; then
-    read -p "Wpisz opis zmian (commit message) [Aktualizacja workflow]: " MSG
-    if [ -z "$MSG" ]; then
-        MSG="Aktualizacja workflow"
+    if [ -z "$1" ]; then
+        read -p "Wpisz opis zmian (commit message) [Aktualizacja workflow]: " MSG
+        if [ -z "$MSG" ]; then
+            MSG="Aktualizacja workflow"
+        fi
+    else
+        MSG="$1"
     fi
+
+    echo "📦 Tworzenie commita: $MSG"
+    git add .
+    git commit -m "$MSG"
 else
-    MSG="$1"
+    echo "ℹ️ Drzewo robocze czyste (brak nowych zmian w plikach)."
 fi
 
-echo "📦 Dodawanie plików i tworzenie commita..."
-git add .
-git commit -m "$MSG"
-
-echo "⬆️ Wysyłanie na GitHuba (branch: main)..."
-git push origin main
+# 2. Sprawdzenie czy lokalna gałąź ma commity do wysłania na serwer
+echo "⬆️ Wysyłanie commitów na GitHuba (origin main)..."
+git push -u origin main
 
 if [ $? -eq 0 ]; then
-    echo "✅ Zmiany pomyślnie wysłane na https://github.com/Paweell/n8n.git"
+    echo "✅ Repozytorium jest w pełni zsynchronizowane z https://github.com/Paweell/n8n.git"
 else
-    echo "⚠️ Błąd podczas pushowania. Upewnij się, że masz skonfigurowany klucz SSH / token GitHub."
+    echo "⚠️ Błąd podczas pushowania. Upewnij się, że masz uprawnienia do repozytorium (SSH/Token)."
 fi
