@@ -1,0 +1,9 @@
+# System files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# Environment and sensitive files
+.env
+*.local
+credentials.json

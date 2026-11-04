@@ -1,0 +1,1144 @@
+{
+  "name": "Automatyczne Maile - sala zabaw urodzinki",
+  "nodes": [
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=📩 **NOWY SZKIC E-MAILA DO WERYFIKACJI**\n\n👤 **Solenizant:** {{ $('Przygotowuję email do klienta').item.json.pierwszeImie }}\n✉️ **Email:** `{{ $('Przygotowuję email do klienta').item.json.body['email-kontaktowy'] }}`\n📞 **Telefon:** `{{ $('Przygotowuję email do klienta').item.json.body['telefon-kontaktowy'] }}`\n📌 **Temat maila:** {{ $('Przygotowuję email do klienta').item.json.emailSubject }}\n\n📄 **Proponowana treść wiadomości:**\n```html\n{{ $('Przygotowuję email do klienta').item.json.emailBody }}",
+        "options": {}
+      },
+      "id": "ba8f47eb-ef72-42c6-991e-a27f9ab9650b",
+      "name": "Sala zabaw podsumowanie systemowe ustawienia draftu",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1168,
+        1216
+      ],
+      "webhookId": "495363ed-3f62-4b52-bb19-fc8dae8ae97c",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "4KRwJNUIxJ7lpKFm",
+          "name": "Sala zabaw - Powiadomienia systemowe"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🎉 **NOWA REZERWACJA (Google Calendar)**\n\n👤 **Klient:** {{ $json['Imię'] }} ({{ $json.zwroty.panPani }})\n📞 **Telefon:** `{{ $json['Telefon'] }}`\n✉️ **Email:** {{ $json['Email'] }}\n📦 **Pakiet:** **{{ $json['Pakiet'] }}**\n📅 **Termin:** {{ $json['Data'] }}\n\n📝 **Dodatkowe uwagi:**\n> {{ $json['Uwagi'] || 'Brak dodatkowych uwag.' }}\n\n---\n*Wiadomość wygenerowana automatycznie | {{ $json.zwroty.klientKlientka }} {{ $json.zwroty.dokonalDokonala }} rezerwacji.*",
+        "options": {}
+      },
+      "id": "3dc50bba-cdb5-45de-9878-6d24e62d8b7c",
+      "name": "Nowy klient - zapis z kalendarza",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        432,
+        1184
+      ],
+      "webhookId": "495363ed-3f62-4b52-bb19-fc8dae8ae97c",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "2Milf8ZsQlncR3yb",
+          "name": "Sala zabaw - zapisy kelendarz"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.emailSubject }}",
+        "emailType": "html",
+        "message": "={{ $json.emailBody }}",
+        "options": {
+          "sendTo": "={{ $json.Email }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        896,
+        1200
+      ],
+      "id": "6e2ed1b9-b2d0-489c-936f-8a489d7073b9",
+      "name": "Tworzę szkic maila do klienta",
+      "webhookId": "55a1f267-f9c0-40ed-93a2-cc7b244e67d5",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jJeyrz0clJ0Y57XY",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. ZAMIAST brać dane z wejścia (które teraz nadpisał Discord), \n// sięgamy \"wstecz\" do węzła, który miał kompletne dane!\n// UWAGA: Upewnij się, że nazwa w nawiasach to DOKŁADNA nazwa Twojego węzła z datami\nconst formData = $('Wylicz daty powiadomień').first().json;\nconst body = formData.body || formData;\n\nconst imieSolenizanta = body['imie-solenizanta'] || '';\nconst telefon = body['telefon-kontaktowy'] || '';\nconst email = body['email-kontaktowy'] || '';\nconst pakiet = body['pakiet'] || '';\nconst motyw = body['motyw'] || '';\nconst dataZabawy = body['data-zabawy'] || '';\nconst wiek = body['wiek'] || '';\nconst dodatki = body['dodatki'] || '';\n\n// 2. Pierwsze imię solenizanta do detekcji płci dziecka\nconst pierwszeImie = imieSolenizanta.split(' ')[0].trim();\nconst meskieWyjatki = ['kuba', 'barnaba', 'bonawentura', 'jarema', 'kosma'];\nlet plecDziecka = 'M';\nif (pierwszeImie) {\n  const imieLower = pierwszeImie.toLowerCase();\n  if (imieLower.endsWith('a') && !meskieWyjatki.includes(imieLower)) {\n    plecDziecka = 'F';\n  }\n}\n\n// 3. Słownik zwrotów uzależnionych od płci dziecka\nconst zwroty = {\n  synaCorki: plecDziecka === 'F' ? 'córki' : 'syna',\n  solenizantaSolenizantki: plecDziecka === 'F' ? 'Solenizantki' : 'Solenizanta'\n};\n\n// 4. Przygotowanie propozycji tematu i treści maila (w formacie HTML)\nconst emailSubject = `Zapytanie o urodziny - ${pierwszeImie} (${wiek})`;\n\nconst emailBody = `Szanowni Państwo,<br><br>\n\nDziękujemy za przesłanie zapytania o organizację urodzin dla Waszego dziecka!<br><br>\n\nOto podsumowanie szczegółów imprezy dla <b>${pierwszeImie}</b>:<br>\n• Wiek ${zwroty.solenizantaSolenizantki}: <b>${wiek}</b><br>\n• Preferowana data zabawy: <b>${dataZabawy || 'Do ustalenia'}</b><br>\n• Wybrany motyw / sala: <b>${motyw || 'Brak'}</b><br>\n• Wybrany pakiet: <b>${pakiet || 'Brak'}</b><br>\n• Zaznaczone dodatki: <b>${dodatki || 'Brak'}</b><br><br>\n\n<b>Dane kontaktowe:</b><br>\n• Telefon: ${telefon || 'Nie podano'}<br>\n• E-mail: ${email || 'Nie podano'}<br><br>\n\nNasz zespół wkrótce skontaktuje się z Państwem, aby potwierdzić dostępność terminu i omówić szczegóły tego wyjątkowego dnia.<br><br>\n\nW razie jakichkolwiek pytań lub chęci modyfikacji rezerwacji, prosimy o odpowiedź na tę wiadomość.<br><br>\n\nZ pozdrowieniami,<br>\n<b>Zespół Sali Zabaw</b>`;\n\n// 5. Zwracamy z powrotem PEŁEN obiekt JSON (żeby Gmail i kolejne węzły miały wszystko)\nreturn {\n  json: {\n    ...formData,\n    pierwszeImie,\n    zwroty,\n    emailSubject,\n    emailBody\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        656,
+        1200
+      ],
+      "id": "7d5743fd-78c5-4fd7-b82a-574c57644ac9",
+      "name": "Przygotowuję email do klienta"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1dSkwPFmXQA7AGrbaB-C2ooeXk2vfoKz25ZMB1UJJEzg/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Zapisy na urodzinki",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSkwPFmXQA7AGrbaB-C2ooeXk2vfoKz25ZMB1UJJEzg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Telefon": "={{ $json.body['telefon-kontaktowy'] }}",
+            "Pakiet": "={{ $json.body.pakiet }}",
+            "Data": "={{ $json.body['data-zabawy'] }}",
+            "Imię solenizanta": "={{ $json.body['imie-solenizanta']}}",
+            "Wiek solenizanta": "={{ $json.body.wiek }}",
+            "Wybrany motyw": "={{ $json.body.motyw }}",
+            "Dodatki": "={{ $json.body.dodatki }}",
+            "E-mail": "={{ $json.body['email-kontaktowy'] }}",
+            "Zgoda ogólna ": "={{ $json.body['zgoda-kontakt'] }}",
+            "Zgoda e-mail marketinfowa": "={{ $json.body['zgoda-marketing-email'] }}",
+            "Zgoda telefon marketingowa": "={{ $json.body['zgoda-marketing-telefon'] }}",
+            "Data T-7": "={{ $json[\"Data T-7\"] }}",
+            "Data T-2": "={{ $json[\"Data T-2\"] }}",
+            "Data T+1": "={{ $json[\"Data T+1\"] }}",
+            "Data T+11m": "={{ $json[\"Data T+11m\"] }}",
+            "Kod na kawe": "={{ $json[\"Kod na kawe\"] }}",
+            "ID": "={{ $json.headers[\"cf-ray\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "ID",
+              "displayName": "ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Imię solenizanta",
+              "displayName": "Imię solenizanta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Wiek solenizanta",
+              "displayName": "Wiek solenizanta",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Data",
+              "displayName": "Data",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Liczba gości",
+              "displayName": "Liczba gości",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Wybrany motyw",
+              "displayName": "Wybrany motyw",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Pakiet",
+              "displayName": "Pakiet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Dodatki",
+              "displayName": "Dodatki",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "E-mail",
+              "displayName": "E-mail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Telefon",
+              "displayName": "Telefon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Zgoda ogólna ",
+              "displayName": "Zgoda ogólna ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Zgoda e-mail marketinfowa",
+              "displayName": "Zgoda e-mail marketinfowa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Zgoda telefon marketingowa",
+              "displayName": "Zgoda telefon marketingowa",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Data T-7",
+              "displayName": "Data T-7",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Data T-2",
+              "displayName": "Data T-2",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Data T+1",
+              "displayName": "Data T+1",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Data T+11m",
+              "displayName": "Data T+11m",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Kod na kawe",
+              "displayName": "Kod na kawe",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "920b0780-de2f-4e64-a119-8dccf13d1063",
+      "name": "Zapisuję klienta do tabeli",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        176,
+        960
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cKw81nSlwX1HEObL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "formularz-rezerwacji",
+        "options": {}
+      },
+      "id": "ec3a55fa-c3b6-4d4e-8ade-47de46ee7580",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        976
+      ],
+      "webhookId": "9b1c7a8b-3e5f-4d2a-8c1b-9e8d7f6a5b4c"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst body = item.body || item;\n\n// Upewniamy się, że szukamy poprawnego klucza z nowego formularza\nif(!body['data-zabawy']) return { json: item };\n\nconst dataZabawy = new Date(body['data-zabawy']);\n\nconst tMinus7 = new Date(dataZabawy);\ntMinus7.setDate(tMinus7.getDate() - 7);\n\nconst tMinus2 = new Date(dataZabawy);\ntMinus2.setDate(tMinus2.getDate() - 2);\n\nconst tPlus1 = new Date(dataZabawy);\ntPlus1.setDate(tPlus1.getDate() + 1);\n\nconst tPlus11m = new Date(dataZabawy);\ntPlus11m.setMonth(tPlus11m.getMonth() + 11);\n\nconst formatDate = (d) => d.toISOString().split('T')[0];\n\n// Generowanie unikalnego kodu np. KAWA-A1B2C3\nconst randomCode = Math.random().toString(36).substring(2, 8).toUpperCase();\n\n// Przypisanie wyliczonych dat do głównego obiektu JSON (poza body)\nitem['Data T-7'] = formatDate(tMinus7);\nitem['Data T-2'] = formatDate(tMinus2);\nitem['Data T+1'] = formatDate(tPlus1);\nitem['Data T+11m'] = formatDate(tPlus11m);\nitem['Kod na kawe'] = `KAWA-${randomCode}`;\n\nreturn { json: item };"
+      },
+      "name": "Wylicz daty powiadomień",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        976
+      ],
+      "id": "0188fe60-81f2-4d09-827d-e93f59951089"
+    },
+    {
+      "parameters": {},
+      "name": "Kliknij aby przetestować",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        1152
+      ],
+      "id": "0cb930ab-4c0c-4619-b72c-9e1c280b1909"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      headers: {\n        \"cf-ray\": \"a301dcf48a150202-WAW\",\n        \"host\": \"amy200-20200.mikrus.cloud\",\n        \"x-real-ip\": \"194.53.193.150\"\n      },\n      body: {\n        \"telefon-kontaktowy\": \"732824344\",\n        \"pakiet\": \"Pakiet Baza (50 zł / os.)\",\n        \"data-zabawy\": \"2026-09-24\",\n        \"imie-solenizanta\": \"Michałek\",\n        \"wiek\": \"7 lat\",\n        \"motyw\": \"Sala Leśna\",\n        \"dodatki\": \"Profesjonalne malowanie buziek (+ 150 zł), Zakup pysznego tortu rzemieślniczego z naszej kawiarni (+ 180 zł)\",\n        \"email-kontaktowy\": \"palysakowski@gmail.com\",\n        \"zgoda-kontakt\": \"1\",\n        \"zgoda-marketing-email\": \"1\",\n        \"zgoda-marketing-telefon\": \"1\"\n      }\n    }\n  }\n];"
+      },
+      "name": "Symulacja Danych2",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -608,
+        1152
+      ],
+      "id": "5f1abc8c-a082-4fb7-bf7e-e1ec0c1eb8fe"
+    },
+    {
+      "parameters": {
+        "jsCode": "let staticData = {};\n\n// Omijamy błąd trybu testowego (Execute step) za pomocą bloku try-catch\ntry {\n  staticData = $getWorkflowStaticData('global');\n} catch (error) {\n  // Tryb testowy - używamy tymczasowej, pustej pamięci\n  staticData = {};\n}\n\n// Jeśli tablica nie istnieje, tworzymy ją\nstaticData.processedIds = staticData.processedIds || [];\n\nconst currentId = $input.item.json.headers['cf-ray'];\nlet isDuplicate = false;\n\nif (currentId) {\n  // Sprawdzamy, czy ID jest już w pamięci\n  if (staticData.processedIds.includes(currentId)) {\n    isDuplicate = true;\n  } else {\n    // Jeśli to nowe ID, dodajemy je do pamięci\n    staticData.processedIds.push(currentId);\n    \n    // Czyścimy stare ID (trzymamy ostatnie 100 dla wydajności)\n    if (staticData.processedIds.length > 100) {\n      staticData.processedIds.shift();\n    }\n  }\n}\n\n// Przekazujemy dane dalej z dołączoną flagą duplikatu\nconst item = $input.item.json;\nitem.isDuplicate = isDuplicate;\n\nreturn { json: item };"
+      },
+      "name": "Sprawdzacz Duplikatów",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        976
+      ],
+      "id": "5e62f268-009e-4382-971d-db8a7eb9896d"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isDuplicate }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Czy to duplikat?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        976
+      ],
+      "id": "de3e78d6-c29b-43e7-b6e9-9342581e6e1e"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "={\n  \"name\": \"Straznik Duplikatow\",\n  \"nodes\": [\n    {\n      \"parameters\": {\n        \"jsCode\": \"// Uzyskujemy dostęp do pamięci podręcznej n8n, która przetrwa między uruchomieniami\\nconst staticData = getWorkflowStaticData('global');\\n\\n// Jeśli tablica nie istnieje, tworzymy ją\\nstaticData.processedIds = staticData.processedIds || [];\\n\\nconst currentId = $input.item.json.headers['cf-ray'];\\nlet isDuplicate = false;\\n\\nif (currentId) {\\n  // Sprawdzamy, czy ID jest już w pamięci\\n  if (staticData.processedIds.includes(currentId)) {\\n    isDuplicate = true;\\n  } else {\\n    // Jeśli to nowe ID, dodajemy je do pamięci\\n    staticData.processedIds.push(currentId);\\n    \\n    // Czyścimy stare ID, żeby nie zapchać pamięci serwera (trzymamy ostatnie 100)\\n    if (staticData.processedIds.length > 100) {\\n      staticData.processedIds.shift();\\n    }\\n  }\\n}\\n\\n// Przekazujemy dane dalej, dodając specjalną flagę 'isDuplicate'\\nconst item = $input.item.json;\\nitem.isDuplicate = isDuplicate;\\n\\nreturn { json: item };\"\n      },\n      \"name\": \"Sprawdzacz Duplikatów\",\n      \"type\": \"n8n-nodes-base.code\",\n      \"typeVersion\": 2,\n      \"position\": [400, 300]\n    },\n    {\n      \"parameters\": {\n        \"conditions\": {\n          \"boolean\": [\n            {\n              \"value1\": \"={{ $json.isDuplicate }}\",\n              \"value2\": true\n            }\n          ]\n        }\n      },\n      \"name\": \"Czy to duplikat?\",\n      \"type\": \"n8n-nodes-base.if\",\n      \"typeVersion\": 1,\n      \"position\": [650, 300]\n    },\n    {\n      \"parameters\": {\n        \"content\": \"=🚨 **UWAGA: Zatrzymano duplikat!** 🚨\\n\\nSystem próbował zapisać to samo zgłoszenie drugi raz. Operacja została zablokowana, aby zapobiec dublowaniu wierszy w arkuszu.\\n\\n**Dane zablokowanego zgłoszenia:**\\n• **ID (cf-ray):** `{{ $json.headers['cf-ray'] }}`\\n• **Imię solenizanta:** {{ $json.body['imie-solenizanta'] }}\\n• **Email:** {{ $json.body['email-kontaktowy'] }}\\n• **Wybrana data:** {{ $json.body['data-zabawy'] }}\",\n        \"options\": {}\n      },\n      \"name\": \"Alert na Discord\",\n      \"type\": \"n8n-nodes-base.discord\",\n      \"typeVersion\": 2,\n      \"position\": [900, 150]\n    }\n  ],\n  \"connections\": {\n    \"Sprawdzacz Duplikatów\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Czy to duplikat?\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    },\n    \"Czy to duplikat?\": {\n      \"main\": [\n        [\n          {\n            \"node\": \"Alert na Discord\",\n            \"type\": \"main\",\n            \"index\": 0\n          }\n        ]\n      ]\n    }\n  }\n}",
+        "options": {}
+      },
+      "name": "Alert na Discord",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        -16,
+        816
+      ],
+      "id": "071b4c3b-deea-4d27-8a45-5f98ba1c555e",
+      "webhookId": "976f9ca3-d449-4c5a-98bc-b0900b09d1db",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "4KRwJNUIxJ7lpKFm",
+          "name": "Sala zabaw - Powiadomienia systemowe"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "name": "Co godzinę",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        1600
+      ],
+      "id": "a72e5a95-91e4-4238-8ffa-c433161035fe"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "filters": {
+          "q": "=in:drafts"
+        }
+      },
+      "name": "Pobierz Szkice z Gmaila",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        -592,
+        1600
+      ],
+      "id": "d5739ea1-fed9-4086-80f2-024a94430f8e",
+      "webhookId": "739af4ec-370a-4a02-a20a-0565cd7d96b9",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jJeyrz0clJ0Y57XY",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const drafts = $input.all();\nconst alerts = [];\nconst now = Date.now();\n\nfor (const item of drafts) {\n  // Pobieramy czas utworzenia szkicu w milisekundach (internalDate z Gmaila)\n  const draftTime = parseInt(item.json.internalDate);\n  if (!draftTime) continue;\n\n  // Obliczamy wiek szkicu w godzinach\n  const diffHours = (now - draftTime) / (1000 * 60 * 60);\n  let alertType = null;\n\n  // Tworzymy okienka czasowe, aby wysłać dany alert tylko RAZ\n  if (diffHours >= 1 && diffHours < 7) {\n    alertType = \"⏳ Czas leci (1 godzina)\";\n  } else if (diffHours >= 24 && diffHours < 25) {\n    alertType = \"⚠️ HALO! (Minęły 24 godziny)\";\n  } else if (diffHours >= 48 && diffHours < 49) {\n    alertType = \"🚨 OSTATNIE OSTRZEŻENIE (Minęło 48 godzin!)\";\n  }\n\n  // Jeśli szkic wpada w któreś okienko, szykujemy go do wysyłki na Discord\n  if (alertType) {\n    alerts.push({\n      json: {\n        id: item.json.id,\n        snippet: item.json.snippet,\n        alertType: alertType,\n        godziny: Math.floor(diffHours)\n      }\n    });\n  }\n}\n\nreturn alerts;"
+      },
+      "name": "Filtruj czas oczekiwania",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -336,
+        1600
+      ],
+      "id": "22234e8f-c937-482a-9b94-d9d9f3277195"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "={{ $json.alertType }} - **Zaległa rezerwacja!**\n\nSystem wykrył w skrzynce roboczej przygotowaną wiadomość dla klienta, która czeka na wysłanie od ponad **{{ $json.godziny }} godzin**.\n\n📄 **Podgląd wiadomości:**\n> *{{ $json.snippet }}*\n\n👉 **Co musisz zrobić:** \n[Kliknij tutaj, aby przejść do Szkiców w Gmailu](https://mail.google.com/mail/u/0/#drafts), sprawdź poprawność danych i wyślij wiadomość do klienta.",
+        "options": {}
+      },
+      "name": "Przypomnienie Discord",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        -96,
+        1600
+      ],
+      "id": "ae06cd16-3b8d-42d3-8bba-4597ed1b5827",
+      "webhookId": "dc6e2898-ef09-4a50-a81a-1810733e89b3",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "4KRwJNUIxJ7lpKFm",
+          "name": "Sala zabaw - Powiadomienia systemowe"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "Budzi proces co pełną godzinę (CRON: 0 * * * *), aby uruchomić skanowanie skrzynki Gmail w poszukiwaniu zaległych szkiców.",
+        "height": 96,
+        "width": 432
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -816,
+        1472
+      ],
+      "id": "95b47430-352f-4f60-9937-dbce7404b4b0",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "# 🚀 Główny Proces Obsługi Rezerwacji (Leads Pipeline)\nTen proces odbiera surowe dane z formularza Contact Form 7 na stronie i zamienia je w pełnoprawny system CRM.\n\n**Przepływ danych (Krok po kroku):**\n1. **Odbiór i Filtracja:** Odbiera webhook z WordPressa i blokuje podwójne kliknięcia (duplikaty) na podstawie unikalnego ID z Cloudflare (`cf-ray`).\n2. **Kalkulacja Dat:** Skrypt JS wylicza terminy przypomnień (T-7, T-2, T+1, T+11m) i generuje kod na kawę.\n3. **Baza Danych:** Zapisuje wzbogacony komplet informacji do bazy w Google Sheets.\n4. **Powiadomienia:** Informuje obsługę na Discordzie o nowym lejdzie.\n5. **Komunikacja:** Generuje spersonalizowany kod HTML i tworzy szkic maila (Draft) w Gmailu, po czym wysyła prośbę o jego weryfikację.",
+        "height": 352,
+        "width": 752
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -864,
+        592
+      ],
+      "id": "4699c00b-1b5b-40aa-80ca-113abefed7da",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "options": {}
+      },
+      "name": "T-7: Telefon Dosprzedażowy (Discord)",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        208,
+        1888
+      ],
+      "id": "fce9c5fb-432c-4f35-971d-7856ffcfd793",
+      "webhookId": "833c5de1-53aa-4b56-a92c-f946ae666bac",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "4KRwJNUIxJ7lpKFm",
+          "name": "Sala zabaw - Powiadomienia systemowe"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.Dzisiaj }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "={{ $json['Data T-7'] }}"
+            },
+            {
+              "value2": "={{ $json['Data T-2'] }}",
+              "output": 1
+            },
+            {
+              "value2": "={{ $json['Data T+1'] }}",
+              "output": 2
+            },
+            {
+              "value2": "={{ $json['Data T+11m'] }}",
+              "output": 3
+            }
+          ]
+        }
+      },
+      "name": "ZWROTNICA - Który to dzień?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        2096
+      ],
+      "id": "b21a8e59-af7c-476f-aeeb-5b31b9066e13"
+    },
+    {
+      "parameters": {
+        "jsCode": "const dzisiaj = new Date().toISOString().split('T')[0];\nconst validItems = [];\n\nfor (const item of $input.all()) {\n  // Pomijamy puste wiersze lub takie, które nie mają wyliczonych dat\n  if (!item.json['Data T-7']) continue;\n  \n  // Dopisujemy dzisiejszą datę do każdego wiersza, żeby ułatwić pracę zwrotnicy\n  item.json.Dzisiaj = dzisiaj;\n  validItems.push(item);\n}\n\nreturn validItems;"
+      },
+      "name": "Filtruj i dodaj dzisiejszą datę",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        2096
+      ],
+      "id": "413df839-bc75-45d0-a68d-fb74945c2110"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1dSkwPFmXQA7AGrbaB-C2ooeXk2vfoKz25ZMB1UJJEzg/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Zapisy na urodzinki",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSkwPFmXQA7AGrbaB-C2ooeXk2vfoKz25ZMB1UJJEzg/edit#gid=0"
+        },
+        "options": {}
+      },
+      "name": "Pobierz bazę z Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -640,
+        2096
+      ],
+      "id": "ce9b659a-ac41-4438-9682-49e1e38e6381",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cKw81nSlwX1HEObL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "name": "Codziennie o 8:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        2096
+      ],
+      "id": "66f327ba-0218-45ed-a279-037c643d724a"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json['email-kontaktowy'] || $json['E-mail'] || $json['Email'] }}",
+        "subject": "=Ważne informacje przed urodzinami - {{ $json['imie-solenizanta'] || $json['Imię solenizanta'] }}! 🎉",
+        "message": "=Szanowni Państwo,<br><br>Już za dwa dni widzimy się na urodzinach!<br><br>Dla zapewnienia maksymalnego komfortu i bezpieczeństwa, przypominamy o bardzo ważnej zasadzie: <b>na naszej Sali Zabaw obowiązuje wymóg noszenia skarpetek antypoślizgowych przez wszystkie bawiące się dzieci.</b> Prosimy o przekazanie tej informacji gościom.<br><br>W razie pytań pozostajemy do dyspozycji.<br><br>Do zobaczenia!<br><b>Zespół Sali Zabaw</b>",
+        "options": {}
+      },
+      "name": "T-2: Mail Organizacyjny (Skarpetki)1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        208,
+        2080
+      ],
+      "id": "efa27883-1d68-4b6d-8165-71c9a2231908",
+      "webhookId": "a787c6e6-3502-4ec0-b643-cb578f46e01e",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jJeyrz0clJ0Y57XY",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json['email-kontaktowy'] || $json['E-mail'] || $json['Email'] }}",
+        "subject": "=Dziękujemy za wspólną zabawę! Prezent dla Państwa ☕",
+        "message": "=Szanowni Państwo,<br><br>Ogromnie dziękujemy za zorganizowanie urodzin w naszej Sali Zabaw! Mamy nadzieję, że solenizant i wszyscy goście bawili się wyśmienicie, a ten dzień pozostanie na długo w ich pamięci.<br><br>W ramach podziękowania za zaufanie, przygotowaliśmy dla Państwa mały prezent – kod na <b>darmową, przepyszną kawę</b> przy Państwa kolejnej wizycie u nas.<br><br>Twój kod to: <b>{{ $json['Kod na kawe'] || $json['Kod na kawę'] }}</b><br><br>Będziemy bardzo wdzięczni, jeśli zechcą Państwo zostawić nam krótką opinię na Google! (Link do wizytówki)<br><br>Z ciepłymi pozdrowieniami,<br><b>Zespół Sali Zabaw</b>",
+        "options": {}
+      },
+      "name": "T+1: Podziękowanie i Kod na Kawę1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        208,
+        2272
+      ],
+      "id": "a3a36137-1f2b-4d77-89b3-cc40d1236087",
+      "webhookId": "3baff668-e2b6-4894-979f-998f6cf70485",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jJeyrz0clJ0Y57XY",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json['email-kontaktowy'] || $json['E-mail'] || $json['Email'] }}",
+        "subject": "=Zbliżają się kolejne urodziny! Zarezerwuj termin 🎂",
+        "message": "=Szanowni Państwo,<br><br>Zauważyliśmy w kalendarzu, że wielkimi krokami zbliżają się kolejne urodziny! Zeszłoroczna impreza była fantastyczna, więc pomyśleliśmy o Państwu i w tym roku.<br><br>Z tej okazji przygotowaliśmy <b>specjalny rabat 10%</b> na organizację tegorocznej imprezy dla powracających klientów. Najlepsze terminy szybko znikają, dlatego zachęcamy do wczesnej rezerwacji.<br><br>Wystarczy odpowiedzieć na tę wiadomość, aby poznać szczegóły lub zarezerwować datę.<br><br>Pozdrawiamy gorąco,<br><b>Zespół Sali Zabaw</b>",
+        "options": {}
+      },
+      "name": "T+11m: Oferta na kolejne urodziny1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        208,
+        2480
+      ],
+      "id": "c2916762-f92d-4ba4-b135-33a5eb032af2",
+      "webhookId": "27e3d68e-7b70-486e-99eb-19b20fce3bd8",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jJeyrz0clJ0Y57XY",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e2f89c62-5a21-4d7a-8b1d-192a00902c4b",
+              "name": "wiadomosc",
+              "value": "=Hej! Dziękujemy za wstępną rezerwację urodzin dla {{ $json.content.parts[0].text }} ({{ $('Walidacja telefonu i treść SMS1').item.json.Data }}). Nasz zespół wkrótce się z Tobą skontaktuje! Sala Zabaw.",
+              "type": "string"
+            },
+            {
+              "id": "8a3b53f6-45ef-4d30-b98a-2c6c0397554b",
+              "name": "TelefonWyczyszczony",
+              "value": "={{ $('Walidacja telefonu i treść SMS1').item.json.TelefonWyczyszczony }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7bae09dc-86c7-4f3b-a18f-81f95b2cad26",
+      "name": "Złóż treść SMS",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        976,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Funkcja do wstępnej odmiany imienia w dopełniaczu (dla kogo?)\nfunction odmienImie(imie) {\n  if (!imie) return \"dziecka\";\n  imie = imie.trim();\n  const lower = imie.toLowerCase();\n  \n  if (lower.endsWith('a')) {\n    if (['kuba', 'barnaba', 'kosma'].includes(lower)) return imie.slice(0, -1) + 'y';\n    if (lower.endsWith('ia') || lower.endsWith('ja')) return imie.slice(0, -1) + (lower.endsWith('ja') ? 'i' : '');\n    return imie.slice(0, -1) + 'y'; \n  }\n  if (lower.endsWith('ś')) return imie.slice(0, -1) + 'sia';\n  if (lower.endsWith('ek')) return imie.slice(0, -2) + 'ka';\n  if (lower === 'kacper') return 'Kacpra';\n  if (lower === 'piotr') return 'Piotra';\n  if (lower === 'paweł') return 'Pawła';\n  if (lower.endsWith('o')) return imie;\n  \n  return imie + 'a';\n}\n\nconst validItems = [];\n\nfor (const item of $input.all()) {\n  const json = item.json;\n\n  // 1. Walidacja marketingowa i telefonu\n  if (json['Zgoda telefon marketingowa'] !== \"1\" && json['Zgoda telefon marketingowa'] !== 1) continue; \n  let cleanPhone = (json['Telefon'] || \"\").replace(/\\D/g, '');\n  if (cleanPhone.length === 11 && cleanPhone.startsWith('48')) cleanPhone = cleanPhone.substring(2);\n  if (cleanPhone.length !== 9) continue; \n\n  // 2. Przygotowanie danych dla Gemini\n  const pelneImie = json['Imię solenizanta'] || 'Dziecko';\n  const pierwszeImie = pelneImie.split(' ')[0].trim();\n  \n  // Wstępna propozycja (JS robi 90% roboty z zachowaniem polskich znaków)\n  const propozycjaJS = odmienImie(pierwszeImie);\n\n  // Zapisujemy w obiekcie\n  json.TelefonWyczyszczony = cleanPhone;\n  json.bazoweImie = pierwszeImie;\n  json.propozycjaJS = propozycjaJS;\n\n  validItems.push(item);\n}\n\nreturn validItems;"
+      },
+      "id": "8eb29fe5-ba55-4b7d-ae33-633d98c3d158",
+      "name": "Walidacja telefonu i treść SMS1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://trigger.macrodroid.com/7459f413-dc0e-4c6a-897f-d3bd9325bbe6/sms",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "numer",
+              "value": "={{ $json.TelefonWyczyszczony }}"
+            },
+            {
+              "name": "tresc",
+              "value": "={{ $json.wiadomosc }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "392be1f5-848a-4629-8908-d96e8e448b70",
+      "name": "Wyślij SMS (MacroDroid)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1184,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Jesteś korektorem tekstów. Otrzymasz imię dziecka. Twoim zadaniem jest zwrócić to imię poprawnie odmienione w dopełniaczu (odpowiada na pytanie: \"dla kogo?\"). \nZasady absolutne:\n1. Zwracasz TYLKO to jedno słowo. Żadnych wstępów, kropek ani wyjaśnień.\n2. Pamiętaj o zachowaniu wielkiej litery na początku.\n3. Zadbaj o idealną polską pisownię i zachowaj polskie znaki diakrytyczne (ą, ć, ę, ł, ń, ó, ś, ź, ż).\n\nImię oryginalne wpisane przez klienta: {{ $json.bazoweImie }}\nWstępna propozycja wygenerowana przez skrypt: {{ $json.propozycjaJS }}\n\nJeśli propozycja skryptu jest poprawna gramatycznie i językowo, po prostu ją zwróć. Jeśli jest błędna (np. w przypadku obcojęzycznego imienia lub skomplikowanej odmiany), popraw ją i zwróć idealnie odmienioną wersję (dopełniacz) z polskimi znakami."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        656,
+        944
+      ],
+      "id": "7b46cf5f-1b72-4797-9ef7-1e5fbb4d00d7",
+      "name": "Message a model1",
+      "notesInFlow": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "bcTOOcHSy2InbuFc",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "notes": "za pomocą LLM sprawdzam wiadomość i tworzę odpowiedź "
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "procesy.n8n@gmail.com",
+          "mode": "list",
+          "cachedResultName": "procesy.n8n@gmail.com"
+        },
+        "start": "={{ $json.Data }}",
+        "end": "={{ $json.Data }}",
+        "additionalFields": {
+          "description": "=Telefon: {{ $json.Telefon }}",
+          "summary": "=Urodziny: {{ $json[\"Imię solenizanta\"] }}"
+        }
+      },
+      "id": "b16a1b57-4186-47a4-bc65-2faccbbe9336",
+      "name": "Zapisz (WWW -> Calendar)",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1,
+      "position": [
+        432,
+        736
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "lCjNdiSsVX4FZAMt",
+          "name": "Google Calendar account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Tworzę szkic maila do klienta": {
+      "main": [
+        [
+          {
+            "node": "Sala zabaw podsumowanie systemowe ustawienia draftu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Przygotowuję email do klienta": {
+      "main": [
+        [
+          {
+            "node": "Tworzę szkic maila do klienta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisuję klienta do tabeli": {
+      "main": [
+        [
+          {
+            "node": "Zapisz (WWW -> Calendar)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Walidacja telefonu i treść SMS1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Nowy klient - zapis z kalendarza",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Sprawdzacz Duplikatów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kliknij aby przetestować": {
+      "main": [
+        [
+          {
+            "node": "Symulacja Danych2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wylicz daty powiadomień": {
+      "main": [
+        [
+          {
+            "node": "Zapisuję klienta do tabeli",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Symulacja Danych2": {
+      "main": [
+        [
+          {
+            "node": "Sprawdzacz Duplikatów",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sprawdzacz Duplikatów": {
+      "main": [
+        [
+          {
+            "node": "Czy to duplikat?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czy to duplikat?": {
+      "main": [
+        [
+          {
+            "node": "Alert na Discord",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wylicz daty powiadomień",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nowy klient - zapis z kalendarza": {
+      "main": [
+        [
+          {
+            "node": "Przygotowuję email do klienta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Co godzinę": {
+      "main": [
+        [
+          {
+            "node": "Pobierz Szkice z Gmaila",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz Szkice z Gmaila": {
+      "main": [
+        [
+          {
+            "node": "Filtruj czas oczekiwania",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtruj czas oczekiwania": {
+      "main": [
+        [
+          {
+            "node": "Przypomnienie Discord",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ZWROTNICA - Który to dzień?": {
+      "main": [
+        [
+          {
+            "node": "T-7: Telefon Dosprzedażowy (Discord)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "T-2: Mail Organizacyjny (Skarpetki)1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "T+1: Podziękowanie i Kod na Kawę1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "T+11m: Oferta na kolejne urodziny1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filtruj i dodaj dzisiejszą datę": {
+      "main": [
+        [
+          {
+            "node": "ZWROTNICA - Który to dzień?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pobierz bazę z Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Filtruj i dodaj dzisiejszą datę",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Codziennie o 8:00": {
+      "main": [
+        [
+          {
+            "node": "Pobierz bazę z Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Złóż treść SMS": {
+      "main": [
+        [
+          {
+            "node": "Wyślij SMS (MacroDroid)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Walidacja telefonu i treść SMS1": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "Złóż treść SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz (WWW -> Calendar)": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "76d9a0f5-b5e7-4613-bda9-567dfceebcfa",
+  "meta": {
+    "instanceId": "2daaf6bf296a1e15191ef19d3251ebb0287df4388f6438736c06f6853c3ea5f1"
+  },
+  "nodeGroups": [],
+  "id": "eYRVnj1NFMWKioF6",
+  "tags": []
+}

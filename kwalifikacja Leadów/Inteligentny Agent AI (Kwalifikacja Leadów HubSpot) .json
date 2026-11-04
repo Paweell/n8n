@@ -1,0 +1,632 @@
+{
+  "name": "Inteligentny Agent AI (Kwalifikacja Leadów HubSpot) - Poprawiony",
+  "nodes": [
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item;\nitem.json.retryCount = (item.json.retryCount || 0) + 1;\nreturn item;"
+      },
+      "id": "4bf818b1-64c1-4238-a733-c170b5424590",
+      "name": "Licznik prób (Code)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -704,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "check-max-retries",
+              "leftValue": "={{ $json.retryCount }}",
+              "rightValue": 3,
+              "operator": {
+                "type": "number",
+                "operation": "lte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0dd293f0-acd0-4999-9b71-810abf87d8d4",
+      "name": "Czy < 3 próby?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -480,
+        1440
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=🚨 **AWARIA AGENTA AI - WYMAGANA UWAGA!** 🚨\n\nModel Gemini trzykrotnie zwrócił pusty lub błędny wynik. Proces został przerwany w obawie o nieskończoną pętlę.\n\n👤 **Odbiorca:** {{ $('Data Privacy & Sanitization (JS)1').item.json.sensitiveData.name }}\n✉️ **E-mail:** {{ $('Data Privacy & Sanitization (JS)1').item.json.sensitiveData.email }}\n🆔 **ID:** `{{ $('Data Privacy & Sanitization (JS)1').item.json.sensitiveData.messageId }}`",
+        "options": {}
+      },
+      "id": "0335a695-ddf1-4f97-a499-c0b71c8cf4f1",
+      "name": "Powiadom Discord (Awaria)",
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        1456
+      ],
+      "webhookId": "495363ed-3f62-4b52-bb19-fc8dae8ae97c",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "4KRwJNUIxJ7lpKFm",
+          "name": "Sala zabaw - Powiadomienia systemowe"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "resource": "deal",
+        "stage": "5874128094",
+        "additionalFields": {
+          "associatedVids": "={{ $json.id }}",
+          "description": "=<h3>🤖 Kwalifikacja Leada przez AI</h3> <p><b>Budżet:</b> {{ $('Zapisz (WWW -> Sheet)').item.json['Szacowany budżet'] }}</p> <p><b>Sentyment:</b> {{ $('Zapisz (WWW -> Sheet)').item.json['Sentyment'] }}</p> <p><b>Pytania:</b> {{ $('Zapisz (WWW -> Sheet)').item.json['Kluczowe pytania'] }}</p> <hr> <h4>✉️ Propozycja odpowiedzi (Szkic):</h4> <pre>{{ $('Zapisz (WWW -> Sheet)').item.json['Propozycja odpowiedzi AI'] }}</pre>",
+          "dealName": "={{ $('Zapisz (WWW -> Sheet)').item.json['Imię i nazwisko'] }} - {{ $('Zapisz (WWW -> Sheet)').item.json['Temat zapytania'] }}"
+        }
+      },
+      "id": "9368c5c1-f6a7-4a95-880d-a348283c5495",
+      "name": "HubSpot: Utwórz Deal",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        272,
+        1184
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "v748EtUEHbSzl7Ed",
+          "name": "HubSpot Service Key account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "q": "subject:\"Nowa wiadomość z formularza\""
+        }
+      },
+      "id": "40d6edaa-eb40-44bb-8dbe-76eda03a69e4",
+      "name": "Gmail Trigger (Contact Form)1",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1952,
+        1184
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jJeyrz0clJ0Y57XY",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nfunction decodeBase64(data) {\n  if (!data) return \"\";\n  let base64 = data.replace(/-/g, '+').replace(/_/g, '/');\n  return Buffer.from(base64, 'base64').toString('utf-8');\n}\nfor (let item of items) {\n  let rawBody = \"\";\n  if (item.json.textPlain) {\n    rawBody = item.json.textPlain;\n  } else if (item.json.text) {\n    rawBody = item.json.text;\n  } else if (item.json.payload) {\n    if (item.json.payload.body && item.json.payload.body.data) {\n      rawBody = decodeBase64(item.json.payload.body.data);\n    } else if (item.json.payload.parts) {\n      let textPart = item.json.payload.parts.find(p => p.mimeType === 'text/plain');\n      if (textPart && textPart.body && textPart.body.data) {\n        rawBody = decodeBase64(textPart.body.data);\n      }\n    }\n  }\n  if (!rawBody) {\n    rawBody = item.json.snippet || item.json.bodyHtml || \"\";\n  }\n  let nameMatch = rawBody.match(/(?:Od|Imię i nazwisko|Name):\\s*(.*?)(?=\\s*(?:E-mail|Email|Adres e-mail|Telefon|Tel|Phone|Wiadomość|Message|Treść):|$)/i);\n  let emailMatch = rawBody.match(/(?:E-mail|Email|Adres e-mail):\\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,})/i);\n  let phoneMatch = rawBody.match(/(?:Telefon|Tel|Phone):\\s*([+\\d\\s-]{9,15})/i);\n  let messageMatch = rawBody.match(/(?:Wiadomość|Message|Treść):\\s*([\\s\\S]+)/i);\n  let name = nameMatch ? nameMatch[1].trim() : \"Nieznany Klient\";\n  let email = emailMatch ? emailMatch[1].trim() : \"brak@email.com\";\n  let phone = phoneMatch ? phoneMatch[1].trim() : \"brak telefonu\";\n  let message = messageMatch ? messageMatch[1].trim() : rawBody.trim();\n  let cleanPhone = phone.replace(/[^\\d+]/g, \"\");\n  if (cleanPhone.length === 9) {\n    cleanPhone = \"+48\" + cleanPhone;\n  }\n  let cleanMessageForLLM = message\n    .replace(/ignore previous instructions/gi, \"[ZABLOKOWANO]\")\n    .replace(/system prompt/gi, \"[ZABLOKOWANO]\");\n  let messageId = item.json.id || item.json.messageId || \"brak_id\";\n  item.json = {\n    sensitiveData: {\n      messageId: messageId,\n      name: name,\n      email: email.toLowerCase(),\n      phone: cleanPhone,\n      originalMessage: message,\n      timestamp: new Date().toISOString()\n    },\n    llmPayload: {\n      message: cleanMessageForLLM\n    }\n  };\n}\nreturn items;"
+      },
+      "id": "86bc30e0-0df6-43e0-9a29-ce5f5e6cefed",
+      "name": "Data Privacy & Sanitization (JS)1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1552,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nfor (let i = 0; i < items.length; i++) {\n  let item = items[i];\n  let privacyData = {};\n  try {\n    privacyData = $('Data Privacy & Sanitization (JS)1').all()[i].json.sensitiveData;\n  } catch (err) {\n    privacyData = {\n      messageId: \"brak_id\",\n      name: \"Nieznany\",\n      email: \"brak@email.com\",\n      phone: \"\",\n      originalMessage: \"\",\n      timestamp: new Date().toISOString()\n    };\n  }\n  let rawGeminiText = item.json.text || \n                     (item.json.content && item.json.content.parts && item.json.content.parts[0].text) || \n                     (item.json.message && item.json.message.content && item.json.message.content.parts && item.json.message.content.parts[0].text) || \n                     \"\";\n  rawGeminiText = rawGeminiText.replace(/```json/gi, '').replace(/```/gi, '').trim();\n  let geminiAnalysis = {};\n  try {\n    geminiAnalysis = JSON.parse(rawGeminiText);\n  } catch (e) {\n    geminiAnalysis = {\n      intencja: \"wycena\",\n      temat_glowny: \"Zapytanie ofertowe\",\n      szacowany_budzet: \"nieokreślony\",\n      sentyment: \"neutralny\",\n      kluczowe_pytania: [],\n      propozycja_odpowiedzi: \"Dzień dobry, dziękujemy za wiadomość. Skontaktujemy się wkrótce.\"\n    };\n  }\n  let questions = Array.isArray(geminiAnalysis.kluczowe_pytania) \n    ? geminiAnalysis.kluczowe_pytania.join(\" | \") \n    : (geminiAnalysis.kluczowe_pytania || \"\");\n  item.json = {\n    \"ID Wiadomości\": privacyData.messageId,\n    \"Data zgłoszenia\": privacyData.timestamp,\n    \"Imię i nazwisko\": privacyData.name,\n    \"E-mail\": privacyData.email,\n    \"Telefon\": privacyData.phone,\n    \"Oryginalna wiadomość\": privacyData.originalMessage,\n    \"Intencja\": geminiAnalysis.intencja || \"wycena\",\n    \"Temat zapytania\": geminiAnalysis.temat_glowny || \"Brak tematu\",\n    \"Szacowany budżet\": geminiAnalysis.szacowany_budzet || \"nieokreślony\",\n    \"Sentyment\": geminiAnalysis.sentyment || \"neutralny\",\n    \"Kluczowe pytania\": questions,\n    \"Propozycja odpowiedzi AI\": geminiAnalysis.propozycja_odpowiedzi || \"\",\n    \"STATUS\": \"Oczekuje\"\n  };\n}\nreturn items;"
+      },
+      "id": "c81f30d1-d3d8-4126-aa04-f94da1b8c188",
+      "name": "Combine Lead Data1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -464,
+        1184
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Jesteś starszym analitykiem sprzedaży i kwalifikacji leadów biznesowych w firmie wdrożeniowej B2B zajmującej się automatyzacją procesów.\n\nTwój cel to przeanalizowanie przesłanej wiadomości od potencjalnego klienta i wygenerowanie odpowiedzi wyłącznie w formacie obiektu JSON (Structured Output) o ściśle określonej strukturze.\n\nBAZA WIEDZY FIRMY (Zasady, na których musisz opierać propozycje odpowiedzi):\n1. Technologie: Specjalizujemy się w n8n, Make.com, HubSpot CRM, Google Workspace, WordPress oraz integracjach modeli AI (OpenAI, Gemini). Nie zajmujemy się naprawą sprzętu ani klasycznym pozycjonowaniem SEO.\n2. Progi budżetowe: Nasze wdrożenia zaczynają się od 5 000 PLN. Jeśli klient podał niższy budżet, poinformuj go uprzejmie o naszym progu wejścia, ale zaproponuj w zamian płatną, jednorazową konsultację audytową (koszt: 500 PLN netto).\n3. Czas realizacji: Proste integracje trwają zazwyczaj od 1 do 2 tygodni. Bardziej złożone systemy wymagają od 1 do 2 miesięcy pracy. Nigdy nie obiecuj realizacji \"na jutro\".\n4. Polityka cenowa: Nigdy nie podawaj ostatecznej, sztywnej ceny w pierwszym mailu. Zawsze używaj sformułowań \"szacunkowo\", \"od\", \"wstępne widełki\".\n5. Call to Action (CTA): Celem każdego pierwszego maila jest umówienie bezpłatnej, 15-minutowej rozmowy zapoznawczej online (Google Meet), aby zrozumieć procesy klienta.\n\nSTRUKTURA WYMAGANEGO OBIEKTU JSON:\n{\n  \"intencja\": \"wycena\" | \"wsparcie_techniczne\" | \"oferta_pracy\" | \"spam\" | \"inne\",\n  \"temat_glowny\": \"Krótkie podsumowanie problemu klienta (max 6 słów)\",\n  \"szacowany_budzet\": \"Wykryta kwota wraz z walutą (np. '12 000 PLN') lub 'nieokreślony'\",\n  \"sentyment\": \"pozytywny\" | \"neutralny\" | \"negatywny\",\n  \"kluczowe_pytania\": [\n    \"lista konkretnych pytań lub głównych wymagań zgłoszonych przez klienta\"\n  ],\n  \"propozycja_odpowiedzi\": \"Profesjonalny szkic wiadomości e-mail po polsku. Zastosuj zasady z BAZY WIEDZY FIRMY. Podpisz wiadomość jako 'Dział Automatyzacji'.\"\n}\n\nZASADY ANALIZY I GENEROWANIA ODPOWIEDZI:\n1. Odpowiadaj wyłącznie po polsku.\n2. \"szacowany_budzet\": Szukaj jednoznacznych wzmianek o kwotach w tekście. Jeśli brak kwoty, wpisz \"nieokreślony\".\n3. \"propozycja_odpowiedzi\":\n   - Nie używaj powitalnych formułek zawierających dane osobowe (imię/nazwisko), zacznij bezpośrednio od: \"Dzień dobry,\\n\\n...\"\n   - Odpowiedz merytorycznie na problem klienta, używając wiedzy z BAZY WIEDZY FIRMY.\n\nWYMÓG FORMATOWANIA:\nZwróć wyłącznie poprawny obiekt JSON. Nie dodawaj przed ani po nim żadnych wyjaśnień, nagłówków ani znaczników Markdown.\n\n---\nWIADOMOŚĆ OD KLIENTA DO ANALIZY:\n{{ $json.llmPayload.message }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -944,
+        1184
+      ],
+      "id": "74196e01-452a-474b-b995-c84957380e3c",
+      "name": "Message a model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "bcTOOcHSy2InbuFc",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "messageId": "={{ $json.id }}",
+        "simple": false,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        -1744,
+        1184
+      ],
+      "id": "438ebc16-776c-4f96-bbe6-1a80459d88e5",
+      "name": "Get a message1",
+      "webhookId": "7cea90ea-73e4-4e47-b6d0-d74a8d4821ec",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "jJeyrz0clJ0Y57XY",
+          "name": "Gmail account 3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1_DM-oAMqatCR_Mh1msRuI1yASoZ99gkN7CZe6j-BzKM/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Arkusz1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_DM-oAMqatCR_Mh1msRuI1yASoZ99gkN7CZe6j-BzKM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Data zgłoszenia": "={{ $json[\"Data zgłoszenia\"] }}",
+            "Imię i nazwisko": "={{ $json[\"Imię i nazwisko\"] }}",
+            "E-mail": "={{ $json[\"E-mail\"] }}",
+            "Telefon": "={{ $json.Telefon }}",
+            "Oryginalna wiadomość": "={{ $json[\"Oryginalna wiadomość\"] }}",
+            "Intencja": "={{ $json.Intencja }}",
+            "Temat zapytania": "={{ $json[\"Temat zapytania\"] }}",
+            "Szacowany budżet": "={{ $json[\"Szacowany budżet\"] }}",
+            "Sentyment": "={{ $json.Sentyment }}",
+            "Kluczowe pytania": "={{ $json[\"Kluczowe pytania\"] }}",
+            "Propozycja odpowiedzi AI": "={{ $json[\"Propozycja odpowiedzi AI\"] }}",
+            "STATUS": "={{ $json.STATUS }}",
+            "ID": "={{ $json['ID Wiadomości'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "4bf12a4a-eb2b-4177-b8df-ae55a271863f",
+      "name": "Zapisz (WWW -> Sheet)",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -208,
+        1184
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cKw81nSlwX1HEObL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "text-not-empty",
+              "leftValue": "={{ $json.content.parts[0].text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -704,
+        1184
+      ],
+      "id": "b2ab4703-40d1-4dfe-be61-b501bcee9f1c",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "amount": 10,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        -608,
+        1664
+      ],
+      "id": "680c1313-c2a4-4e16-917e-492ef800739e",
+      "name": "Wait",
+      "webhookId": "8a394505-7020-4a87-b92e-bb4c1fb011a6"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1_DM-oAMqatCR_Mh1msRuI1yASoZ99gkN7CZe6j-BzKM/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Arkusz1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1_DM-oAMqatCR_Mh1msRuI1yASoZ99gkN7CZe6j-BzKM/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "ID Wiadomości",
+              "lookupValue": "={{ $json.sensitiveData.messageId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1360,
+        1184
+      ],
+      "id": "7b5b1878-251a-40aa-ac5c-0435dd667769",
+      "name": "Get row(s) in sheet2",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "cKw81nSlwX1HEObL",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "check-duplicate",
+              "leftValue": "={{ $json['ID Wiadomości'] }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1168,
+        1184
+      ],
+      "id": "4a5dd0f9-8f2f-45f1-b42e-442535797ec5",
+      "name": "If3"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        -896,
+        976
+      ],
+      "id": "a91d6d87-ec9b-4e27-a46b-93ab3078e17f",
+      "name": "No Operation, do nothing1"
+    },
+    {
+      "parameters": {
+        "authentication": "appToken",
+        "operation": "create"
+      },
+      "id": "4139ed7a-0c25-4d5d-8bab-287b74b94d3a",
+      "name": "HubSpot: Utwórz Kontakt1",
+      "type": "n8n-nodes-base.hubspot",
+      "typeVersion": 2,
+      "position": [
+        48,
+        1184
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "v748EtUEHbSzl7Ed",
+          "name": "HubSpot Service Key account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "name": "Kliknij aby przetestować",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1952,
+        1408
+      ],
+      "id": "36e537b3-3308-4499-9efa-8e1fad57d8a4"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      headers: {\n        \"cf-ray\": \"a301dcf48a150202-WAW\",\n        \"host\": \"amy200-20200.mikrus.cloud\",\n        \"x-real-ip\": \"194.53.193.150\"\n      },\n      body: {\n        \"telefon-kontaktowy\": \"44667877\",\n        \"pakiet\": \"Pakiet Baza (50 zł / os.)\",\n        \"data-zabawy\": \"2026-09-24\",\n        \"imie-solenizanta\": \"Krzyś\",\n        \"wiek\": \"7 lat\",\n        \"motyw\": \"Sala Leśna\",\n        \"dodatki\": \"Profesjonalne malowanie buziek (+ 150 zł), Zakup pysznego tortu rzemieślniczego z naszej kawiarni (+ 180 zł)\",\n        \"email-kontaktowy\": \"palysakowski@gmail.com\",\n        \"zgoda-kontakt\": \"1\",\n        \"zgoda-marketing-email\": \"Wyrażam zgodę na otrzymywanie ofert promocyjnych i nowości drogą e-mailową.\",\n        \"zgoda-marketing-telefon\": \"Wyrażam zgodę na kontakt telefoniczny...\"\n      }\n    }\n  }\n];"
+      },
+      "name": "Symulacja Danych",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1760,
+        1408
+      ],
+      "id": "4f65feb8-5975-4a1e-93eb-a88761fd7e90"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Licznik prób (Code)": {
+      "main": [
+        [
+          {
+            "node": "Czy < 3 próby?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Czy < 3 próby?": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Powiadom Discord (Awaria)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger (Contact Form)1": {
+      "main": [
+        [
+          {
+            "node": "Get a message1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Privacy & Sanitization (JS)1": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Lead Data1": {
+      "main": [
+        [
+          {
+            "node": "Zapisz (WWW -> Sheet)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model1": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a message1": {
+      "main": [
+        [
+          {
+            "node": "Data Privacy & Sanitization (JS)1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Zapisz (WWW -> Sheet)": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: Utwórz Kontakt1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Combine Lead Data1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Licznik prób (Code)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet2": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Message a model1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HubSpot: Utwórz Kontakt1": {
+      "main": [
+        [
+          {
+            "node": "HubSpot: Utwórz Deal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kliknij aby przetestować": {
+      "main": [
+        [
+          {
+            "node": "Symulacja Danych",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "14c26ed6-c530-403c-97c7-6e60d7126d32",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "2daaf6bf296a1e15191ef19d3251ebb0287df4388f6438736c06f6853c3ea5f1"
+  },
+  "nodeGroups": [],
+  "id": "b1MjtF27xNzPs92v",
+  "tags": []
+}
